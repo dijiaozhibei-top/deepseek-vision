@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+logs/
+dist/
+*.egg-info/
+.DS_Store
+frontend/node_modules/
+.claude/
+.playwright-mcp/
