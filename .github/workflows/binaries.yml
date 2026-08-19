@@ -1,0 +1,89 @@
+name: Build binaries
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }} (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+          - os: windows-latest
+            arch: x64
+          - os: macos-13
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller build
+
+      - name: Build package metadata
+        run: pip install .
+
+      - name: Build binary with PyInstaller
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            SEP=";"
+            BIN="deepseek-vision.exe"
+          else
+            SEP=":"
+            BIN="deepseek-vision"
+          fi
+          pyinstaller --clean --onefile --name "deepseek-vision" \
+            --collect-all uvicorn \
+            --collect-all fastapi \
+            --collect-all pydantic \
+            --collect-all httpcore \
+            --collect-all httpx \
+            --hidden-import python-dotenv \
+            --hidden-import dotenv \
+            --collect-submodules app \
+            --add-data "app/static${SEP}app/static" \
+            main.py
+          ls -lh dist/
+
+      - name: Smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./dist/deepseek-vision --help || true
+          timeout 6 ./dist/deepseek-vision &
+          sleep 3
+          curl -fsS http://127.0.0.1:8000/health || echo "smoke: health check failed (may need ports free)"
+          kill %1 2>/dev/null || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepseek-vision-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: false

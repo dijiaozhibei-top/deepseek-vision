@@ -23,6 +23,20 @@ docker build -t deepseek-vision .
 docker run -p 8000:8000 deepseek-vision
 ```
 
+### Prebuilt image (no local build needed)
+
+Images are built automatically by GitHub Actions and published to GitHub Container Registry for `linux/amd64` and `linux/arm64`:
+
+```bash
+docker pull ghcr.io/dijiaozhibei-top/deepseek-vision:latest
+docker run -p 8000:8000 --env-file .env ghcr.io/dijiaozhibei-top/deepseek-vision:latest
+
+# or use docker-compose.yml in this repo (reads .env, port configurable via ${PORT})
+docker compose up -d
+```
+
+Prebuilt binaries (Windows / Linux / macOS, x64 / arm64) are available on the [Releases](https://github.com/dijiaozhibei-top/deepseek-vision/releases) page.
+
 ### Manual
 
 ```bash

@@ -24,6 +24,20 @@ docker build -t deepseek-vision .
 docker run -p 8000:8000 deepseek-vision
 ```
 
+### 使用预编译镜像（推荐，无需本地构建）
+
+镜像由 GitHub Actions 自动发布到 GitHub Container Registry，支持 `linux/amd64` 与 `linux/arm64`：
+
+```bash
+docker pull ghcr.io/dijiaozhibei-top/deepseek-vision:latest
+docker run -p 8000:8000 --env-file .env ghcr.io/dijiaozhibei-top/deepseek-vision:latest
+
+# 或使用仓库内的 docker-compose.yml（自动读取 .env、端口可用 ${PORT} 自定义）
+docker compose up -d
+```
+
+预编译二进制（Windows / Linux / macOS，x64 / arm64）可在 [Releases](https://github.com/dijiaozhibei-top/deepseek-vision/releases) 页面下载。
+
 ### 手动配置
 
 ```bash
