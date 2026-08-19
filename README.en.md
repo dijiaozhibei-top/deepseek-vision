@@ -8,6 +8,8 @@ DeepSeek's API is text-only, which severely limits Agent capabilities and user e
 
 This project is a side open-source project from [Proma](https://proma.cool) — the smoothest general-purpose open Agent, with the most complete DeepSeek v4 support including vision and web search built in. This repo provides a self-hostable proxy version so you can plug a single DeepSeek API key into any AI tool.
 
+> **Upstream**: This repository is forked from [ErlichLiu/deepseek-vision](https://github.com/ErlichLiu/deepseek-vision) and extended with an OpenAI-format upstream (`DEEPSEEK_FORMAT` / `EXTRA_BACKEND_FORMAT`), a hardened vision middleware (thinking-model aware, nested tool-result images, failure retry), reasoning passthrough with multi-turn `reasoning_content` round-trip, and a Windows blank-page fix for the dashboard. Released under MIT with the original copyright notice preserved. Thanks to the original author and the open-source community.
+
 ---
 
 ## Quick start

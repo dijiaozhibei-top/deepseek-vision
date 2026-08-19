@@ -8,6 +8,8 @@ DeepSeek 官方 API 是纯文本模型，这会极大限制 Agent 的能力以�
 
 本项目是 [Proma](https://proma.cool) 的旁支开源项目。Proma 是最丝滑的通用开源 Agent，对 DeepSeek v4 系列的适配最为完整，已在云端服务中补齐了包括视觉、联网搜索在内的全部缺失能力，欢迎直接使用。本仓库提供可自部署的代理版本，让你用同一个 DeepSeek API Key 接入任何 AI 工具。
 
+> **上游来源**：本仓库 fork 自 [ErlichLiu/deepseek-vision](https://github.com/ErlichLiu/deepseek-vision) 并二次开发，在此基础上新增了 OpenAI 格式上游（`DEEPSEEK_FORMAT` / `EXTRA_BACKEND_FORMAT`）、强化视觉中间件（思考模型适配、工具结果内嵌图片、失败重试）、思考过程透传与多轮 `reasoning_content` 回传，并修复了 Windows 下前端白屏等问题。代码以 MIT 协议发布，保留原版权声明，感谢原作者与开源社区。
+
 ---
 
 ## 快速开始
