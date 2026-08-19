@@ -21,7 +21,8 @@ RUN groupadd -r appgroup && \
 WORKDIR /app
 
 # Install Python deps (cached layer — only re-runs when pyproject.toml changes)
-COPY pyproject.toml ./
+# README.md is referenced by pyproject.toml (readme field) for package metadata.
+COPY pyproject.toml README.md ./
 RUN pip install --no-cache-dir . && \
     pip cache purge
 
