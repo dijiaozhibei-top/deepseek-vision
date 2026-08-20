@@ -35,6 +35,18 @@ def _build_body(request: MessageRequest, upstream_model_id: str, stream: bool) -
             merged = dict(output_config) if isinstance(output_config, dict) else {}
             merged["effort"] = "max"
             body["output_config"] = merged
+        # Thinking shares the max_tokens budget with the answer; cap effort on
+        # small budgets so reasoning can't eat the whole answer.
+        effort = body["output_config"].get("effort") or "max"
+        # Thinking shares the max_tokens budget with the answer. Guarantee a
+        # floor budget so reasoning + answer can both fit.
+        body["max_tokens"] = max(int(request.max_tokens or 0), 8192)
+        # Cap effort on small budgets so reasoning can't eat the whole answer.
+        if effort in ("max", "high"):
+            if int(body["max_tokens"]) < 4096:
+                body["output_config"]["effort"] = "low"
+            elif int(body["max_tokens"]) < 16384:
+                body["output_config"]["effort"] = "medium"
         # DeepSeek rejects `thinking` when reasoning_effort / output_config.effort is set.
         body.pop("thinking", None)
         # deepseek-reasoner rejects tool_choice.

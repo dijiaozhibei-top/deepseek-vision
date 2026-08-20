@@ -232,6 +232,22 @@ def _tool_choice_to_oai(tool_choice: Any) -> Any:
     return "auto"
 
 
+def _cap_effort_by_budget(effort: str, max_tokens: int) -> str:
+    """DeepSeek thinking shares the max_tokens budget with the answer.
+
+    If the caller asks for max/high reasoning on a small budget, reasoning
+    consumes everything and the response has no text at all. Cap the effort so
+    the answer still has room.
+    """
+    if effort not in ("max", "high"):
+        return effort
+    if max_tokens < 4096:
+        return "low"
+    if max_tokens < 16384:
+        return "medium"
+    return effort
+
+
 def _build_body(request: MessageRequest, upstream_model_id: str, stream: bool) -> Dict[str, Any]:
     body: Dict[str, Any] = {
         "model": upstream_model_id,
@@ -255,12 +271,15 @@ def _build_body(request: MessageRequest, upstream_model_id: str, stream: bool) -
         body["stream_options"] = {"include_usage": True}
 
     if upstream_model_id.startswith("deepseek-"):
-        # Mirror messages_http: pass through the caller's reasoning effort,
-        # defaulting to max so DeepSeek's adaptive thinking stays enabled.
-        effort = None
+        # Thinking models share the max_tokens budget with the answer. Guarantee
+        # a floor budget so reasoning + answer can both fit, then mirror
+        # messages_http: pass through the caller's reasoning effort (default
+        # max), capped when the effective budget is small.
+        body["max_tokens"] = max(int(request.max_tokens or 0), 8192)
+        effort = "max"
         if isinstance(request.output_config, dict) and isinstance(request.output_config.get("effort"), str):
-            effort = request.output_config["effort"] or None
-        body["reasoning_effort"] = effort or "max"
+            effort = request.output_config["effort"] or "max"
+        body["reasoning_effort"] = _cap_effort_by_budget(effort, body["max_tokens"])
     return body
 
 
@@ -614,7 +633,25 @@ class OpenAICompletionsBackend(LLMBackend):
         response_body = resp.json()
         if meta is not None:
             meta["response_body"] = response_body
-        return _parse_response(response_body, request.model, request_id)
+        parsed = _parse_response(response_body, request.model, request_id)
+
+        # Thinking models share the output budget with the answer. If reasoning
+        # ate everything (truncated, no text/tool_use), retry once with cheap
+        # reasoning so the answer has room.
+        has_output = any(b.get("type") in ("text", "tool_use") for b in parsed.content)
+        if parsed.stop_reason == "max_tokens" and not has_output and (body.get("reasoning_effort") or "max") != "low":
+            retry_body = dict(body)
+            retry_body["reasoning_effort"] = "low"
+            logger.warning(f"[{self.name}] budget eaten by reasoning (no output) — retrying once with effort=low")
+            try:
+                retry_resp = await self._client.post(
+                    f"{self._base_url}/chat/completions", headers=headers, json=retry_body
+                )
+                if retry_resp.status_code < 400:
+                    parsed = _parse_response(retry_resp.json(), request.model, request_id)
+            except Exception as e:
+                logger.warning(f"[{self.name}] retry failed: {e}")
+        return parsed
 
     async def stream(
         self,
